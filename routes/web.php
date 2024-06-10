@@ -30,5 +30,7 @@ Route::get('agents/{id}/delete', [AgentController::class, 'delete'])->name('agen
 
 Route::resource('drugs', DrugController::class);
 Route::get('drugs/{id}/delete', [DrugController::class, 'delete'])->name('drugs.delete');
+Route::get('drugs/{id}/details', [DrugController::class, 'getDetails'])->name('drugs.details');
+
 
 Route::resource('sellings', SellingController::class);

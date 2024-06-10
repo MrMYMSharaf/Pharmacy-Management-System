@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Selling;
+use App\Models\Drug;
 
 class SellingController extends Controller
 {
@@ -36,23 +37,34 @@ class SellingController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'drug_id' => 'required',
-            'price' => 'required|numeric',
-            'quantity' => 'required|integer',
-            'selling_date' => 'required|date',
-        ]);
-
-        $selling = new Selling([
-            'drug_id' => $request->get('drug_id'),
-            'price' => $request->get('price'),
-            'quantity' => $request->get('quantity'),
-            'selling_date' => $request->get('selling_date'),
-            'total_price' => $request->get('price') * $request->get('quantity'),
-        ]);
-
-        $selling->save();
-        return redirect('/sellings')->with('success', 'Selling record created successfully.');
+            $request->validate([
+                'drug_id' => 'required|exists:drugs,id',
+                'price' => 'required|numeric',
+                'quantity' => 'required|integer|min:1',
+                'selling_date' => 'required|date',
+            ]);
+    
+            $drug = Drug::find($request->get('drug_id'));
+    
+            if ($drug->quantity < $request->get('quantity')) {
+                return redirect()->back()->with('error', 'Not enough quantity available.');
+            }
+    
+            $selling = new Selling([
+                'drug_id' => $request->get('drug_id'),
+                'price' => $request->get('price'),
+                'quantity' => $request->get('quantity'),
+                'selling_date' => $request->get('selling_date'),
+                'total_price' => $request->get('price') * $request->get('quantity'),
+            ]);
+    
+            $selling->save();
+    
+            // Update the drug quantity
+            $drug->quantity -= $request->get('quantity');
+            $drug->save();
+    
+            return redirect('/sellings')->with('success', 'Selling record created successfully.');
     }
 
     /**
@@ -77,22 +89,39 @@ class SellingController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'drug_id' => 'required',
+            'drug_id' => 'required|exists:drugs,id',
             'price' => 'required|numeric',
-            'quantity' => 'required|integer',
+            'quantity' => 'required|integer|min:1',
             'selling_date' => 'required|date',
         ]);
-
+    
         $selling = Selling::find($id);
+        $drug = Drug::find($request->get('drug_id'));
+    
+        // Revert the old quantity
+        $oldQuantity = $selling->quantity;
+        $drug->quantity += $oldQuantity;
+    
+        // Check if the new quantity is sufficient
+        if ($drug->quantity < $request->get('quantity')) {
+            return redirect()->back()->with('error', 'Not enough quantity available.');
+        }
+    
+        // Update the selling record
         $selling->drug_id = $request->get('drug_id');
         $selling->price = $request->get('price');
         $selling->quantity = $request->get('quantity');
         $selling->selling_date = $request->get('selling_date');
         $selling->total_price = $request->get('price') * $request->get('quantity');
         $selling->save();
-
+    
+        // Update the drug quantity
+        $drug->quantity -= $request->get('quantity');
+        $drug->save();
+    
         return redirect('/sellings')->with('success', 'Selling record updated successfully.');
     }
+    
 
     /**
      * Remove the specified resource from storage.

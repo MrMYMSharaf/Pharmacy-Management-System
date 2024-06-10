@@ -128,4 +128,21 @@ class DrugController extends Controller
         return redirect()->route('drugs.index')
                         ->with('success','Product deleted successfully');
     }
+
+    public function getDetails($id)
+{
+    $drug = Drug::find($id);
+    if ($drug) {
+        return response()->json([
+            'name' => $drug->name,
+            'price' => $drug->price,
+            'discount' => $drug->discount,
+            'quantity' => $drug->quantity
+        ]);
+    } else {
+        return response()->json(null, 404);
+    }
+}
+
+
 }
